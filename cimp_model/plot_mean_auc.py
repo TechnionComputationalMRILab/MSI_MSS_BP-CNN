@@ -163,7 +163,7 @@ def plot_base_sub(hp,feature):
     root2 = f"{hp['root_dir']}"
     fpr1,tpr1,auc1,aucs1 = get_mean_roc(root1)
     fpr2,tpr2,auc2,aucs2 = get_mean_roc(root2)
-    #fig, ax = plt.subplots() 
+    
     plt.rcParams.update({'font.size':14})
     std1, std2=  paired_t_test(aucs1,aucs2)
     data1 = {"fpr": fpr1[0], "tpr_lo":tpr1[0], "tpr_mean": tpr1[1], "tpr_hi": tpr1[2]}
@@ -176,7 +176,7 @@ def plot_base_sub(hp,feature):
     ax2 = seaborn.lineplot(x=df2.loc[:,'fpr'].values,y=df2.loc[:,'tpr_mean'].values,color='blue')
     ax2.fill_between(fpr2[0], tpr2[0],tpr2[1],color='blue', alpha=.1)
     ax2.fill_between(fpr2[0], tpr2[1],tpr2[2],color='blue', alpha=.1)
-    #ax2 = seaborn.lineplot(data=[fpr2[1],tpr2[1]],color='blue')
+   
     auc1 = "{:.2f}".format(auc1)
     auc2 = "{:.2f}".format(auc2)
     # add legend
@@ -186,15 +186,11 @@ def plot_base_sub(hp,feature):
 
     ax1.set_xlabel('False Positive Rate',fontsize=14)
     ax1.set_ylabel('True Positive Rate',fontsize=14)
-    # plt.rcParams.update({'font.size':14})
-    # ax.legend(loc="lower right")
-    # plt.rcParams.update({'font.size':18})
     ax1.set_title(f"ROC Baseline vs {feature}",fontsize=20)
-
     ax1.grid(True)
     plt.savefig("{}roc_{}_vs.png".format(hp['root_dir'],mode),dpi=500,bbox_inches="tight") 
     plt.close()
-    #roc_boxplot(aucs1,aucs2,feature)  
+    roc_boxplot(aucs1,aucs2,feature)  
 
     data_aucs = {"aucs_base": aucs1, "aucs_sub": aucs2}
     pickle.dump( data_aucs, open( f"{hp['root_dir']}aucs.p", "wb" ) )
