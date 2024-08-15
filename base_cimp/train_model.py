@@ -23,7 +23,6 @@ import copy
 import log_file
 from log_file import summary
 from compute_roc import *
-from ignore_label import ignore_label
 from plot import plot_loss_acc
 from get_auc import *
  
