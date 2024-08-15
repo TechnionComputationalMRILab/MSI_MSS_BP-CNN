@@ -18,32 +18,15 @@ import matplotlib.patches as mpatches
 import seaborn
 import pickle
 
-# per patch precision-recall
-def get_precision_recall(hp):
-    folds_num = hp['n_folds']
-
-    for i in range(folds_num):
-        path = f"{hp['root_dir']}{hp['valid_res_file']}_{i}.csv"
-        df = pd.read_csv(path) 
-        preds = np.array(df['preds'])
-        labels = np.array(df['sub_labels'])
-        # union GS sub classes
-        labels[labels==2]=1
-        preds[preds==2]=1
-        print(classification_report(labels, preds))
         
 def get_patient_precision_recall(hp,feature):
-    # folds_num = hp['n_folds']
     folds_num=5
-    #mode = 'test'
     f_score_list = []
     root_dir = hp['root_dir']
-    #res_file = hp['test_res_file']
     final_cm = np.zeros([2, 2])
     stack_cm=[]
     aps = []
     for i in range(folds_num):
-
         with (open(f"{root_dir}roc_out_{i}.p", "rb")) as openfile:
             data = pickle.load(openfile)
         labels = data['labels']
@@ -51,8 +34,6 @@ def get_patient_precision_recall(hp,feature):
 
         precision, recall, thresholds = precision_recall_curve(labels, probs)
         ap = average_precision_score(labels, probs)
-        auc_pr = auc(recall,precision)
-        print("auc pr: ", auc_pr)
         aps.append(ap)
         # convert to f score         
         fscore = (2 * precision * recall) / (precision + recall)
@@ -61,15 +42,15 @@ def get_patient_precision_recall(hp,feature):
         ix = argmax(fscore)
         print('Best Threshold=%f, F-Score=%.3f,precision:=%.3f,recall=%.3f' % (thresholds[ix], fscore[ix],precision[ix],recall[ix]))
         f_score_list.append(fscore[ix])
-        # threshold for classifying to the positive label - GS
+        # threshold for classifying to the positive label
         probs = np.array(probs)
         labels = np.array(labels)
         preds = np.zeros(probs.shape)
-        gs_ind = np.nonzero(probs>thresholds[ix])[0]
-        gs_ind=gs_ind.astype('int')
-        cin_ind = np.nonzero(probs<=thresholds[ix])[0]
-        preds[gs_ind]=1
-        preds[cin_ind]=0
+        pos_ind = np.nonzero(probs>thresholds[ix])[0]
+        pos_ind=pos_ind.astype('int')
+        neg_ind = np.nonzero(probs<=thresholds[ix])[0]
+        preds[pos_ind]=1
+        preds[neg_ind]=0
 
         plt.rcParams.update({'font.size':14})
 
@@ -98,9 +79,6 @@ def get_patient_precision_recall(hp,feature):
                      verticalalignment="center", fontsize=14,
                      color="white" if average_cm[i, j] > thresh else "black")
 
-    #plt.tight_layout()
-    #disp = ConfusionMatrixDisplay(confusion_matrix=average_cm,display_labels=['MSS','MSI'])
-    #disp.plot(cmap='Blues')
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     plt.rcParams.update({'font.size':14})
@@ -128,9 +106,7 @@ def get_patient_precision_recall(hp,feature):
     with (open(f"{base_dir}ap.p", "rb")) as openfile:
         data = pickle.load(openfile)
         base_aps = data['ap']
-    # paired t-test of the AUC results
-#def paired_t_test(samples_a,samples_b):
-    print(stats.wilcoxon(aps, base_aps,alternative='greater'))
+    print(stats.ttest_rel(base_aps, aps))
     # CI for AP
     sorted_ap = np.array(aps)
     sorted_ap.sort()
@@ -141,16 +117,11 @@ def get_patient_precision_recall(hp,feature):
     print("AP CI: " , auc_)
     print("mean precision score: ", mean_ap, "base f std: ", np.std(aps))
 
-    #print(np.std(samples_a))
-    #print(np.std(samples_b))
-    #return "{:.2f}".format(np.std(samples_a)),  "{:.2f}".format(np.std(samples_b))
 def get_mean_pr(root):    
     total_ap=[]
     total_labels = []
     total_probs = []
-    
-    #plt.figure()
-    #ax = plt.axes()
+  
     for j in range(5):
         with (open(f"{root}roc_out_{j}.p", "rb")) as openfile:
             data = pickle.load(openfile)
@@ -160,40 +131,29 @@ def get_mean_pr(root):
         total_probs.append(probs)
         ap = average_precision_score(labels, probs)
         total_ap.append(ap)
-    # mean_ap = np.mean(total_ap)
+    # in order to plot the PR CI, find the AP CI 
     sorted_ap = np.array(total_ap)
     sorted_ap.sort()
     confidence_lower = sorted_ap[int(0.05 * len(sorted_ap))]
-    # # nonzero returns tuple
+    # The fold that represents the low CI
     index = np.nonzero(total_ap==confidence_lower)
     index_lo = index[0]
     total_probs = np.array(total_probs)
     probs_lo = total_probs[index_lo][0]
-    print(index_lo)
-    print("len probs lo: ", probs_lo)
-    #precision_lo, recall, _ = precision_recall_curve(labels, probs_lo) 
-    #ax.step(recall, precision_lo, color='b',alpha=0.3,lw=1)
+    
     confidence_upper = sorted_ap[int(0.95 * len(sorted_ap))]
+    # The fold that represents the high CI
     index= np.nonzero(total_ap==confidence_upper)
     index_hi = index[0]
     probs_hi = total_probs[index_hi][0]
-    #precision_hi, recall, _ = precision_recall_curve(labels, probs_hi) 
-    #ax.step(recall, precision_hi, color='b',alpha=0.3,lw=1)
+    
     total_labels = np.concatenate(total_labels)
     total_probs = np.concatenate(total_probs)   
-    #precision, recall, _ = precision_recall_curve(total_labels, total_probs)                                     
-
-
-    #plt.figure()
-    #ax = plt.axes()
-    #ax.step(recall, precision, color='b',lw=2,alpha=0.8)
-    #ax.grid(True)
-    #ax.fill_between(recall,precision_hi, precision, alpha=0.2, color='b')
 
     return total_labels,total_probs, probs_hi,probs_lo, labels,total_ap
 
     
-# plots the ROC of baseline vs BP-CNN results    
+# plots the PR of baseline vs BP-CNN results    
 def plot_base_sub(hp,feature):
 
     root1 = 'C:/Users/hadar/Downloads/biomedical_eng/winter_2022/research/base_cimp/'
@@ -218,17 +178,7 @@ def plot_base_sub(hp,feature):
     ax.step(recall_hi2, precision_hi2, color='b',alpha=0.3,lw=1)
     ax.step(recall_lo2, precision_lo2, color='b',alpha=0.3,lw=1)
     ax.step(recall2, precision2, color='b',lw=2,alpha=0.8)
-    #data1 = {"fpr": recall1, "tpr_lo":tpr1[0], "tpr_mean": tpr1[1], "tpr_hi": tpr1[2]}
-    #df1 = pd.DataFrame(data1)
-    #data2 = {"fpr": fpr2[0], "tpr_lo":tpr2[0], "tpr_mean": tpr2[1], "tpr_hi": tpr2[2]}
-    #df2 = pd.DataFrame(data2)
-    #ax1 = seaborn.lineplot(x=df1.loc[:,'fpr'].values,y=df1.loc[:,'tpr_mean'].values,color='green')
-    #ax1.fill_between(fpr1[0], tpr1[0],tpr1[1],color='green', alpha=.1)
-    #ax1.fill_between(fpr1[0], tpr1[1],tpr1[2],color='green', alpha=.1)
-    #ax2 = seaborn.lineplot(x=df2.loc[:,'fpr'].values,y=df2.loc[:,'tpr_mean'].values,color='blue')
-    #ax2.fill_between(fpr2[0], tpr2[0],tpr2[1],color='blue', alpha=.1)
-    #ax2.fill_between(fpr2[0], tpr2[1],tpr2[2],color='blue', alpha=.1)
-    #ax2 = seaborn.lineplot(data=[fpr2[1],tpr2[1]],color='blue')
+
     ap1 = np.mean(aps1)
     ap2 = np.mean(aps2)
     ap1 = "{:.2f}".format(ap1)
@@ -237,22 +187,13 @@ def plot_base_sub(hp,feature):
     top_bar = mpatches.Patch(color='green', label=f'Baseline (area='+ap1+r'$\pm$'+std1+')')
     bottom_bar = mpatches.Patch(color='blue', label='$BP-CNN_{CIMP}$ (area='+ap2+r'$\pm$'+std2+')')
     plt.legend(handles=[top_bar, bottom_bar],fontsize=14)
-
-    #ax.set_xlabel('Precision')
-    #ax.set_ylabel('Recall')
-    # plt.rcParams.update({'font.size':14})
-    # ax.legend(loc="lower right")
-    # plt.rcParams.update({'font.size':18})
     ax.set_title(f"PR Baseline vs {feature}",fontsize=20)
+    ax.grid(True)  
 
-    ax.grid(True)
-    #roc_boxplot(aucs1,aucs2,feature)  
-
-    data_aucs = {"aucs_base": aps1, "aucs_sub": aps2}
-    pickle.dump( data_aucs, open( f"{hp['root_dir']}aucs.p", "wb" ) )
+    data_aps = {"aps_base": aps1, "aps_sub": aps2}
+    pickle.dump( data_aps, open( f"{hp['root_dir']}aps.p", "wb" ) )
     plt.xlabel('Recall',fontsize=14)
     plt.ylabel('Precision',fontsize=14)
-    #plt.title('PR curve CIMP')
     plt.savefig("{}ap_{}_vs.png".format(hp['root_dir'],'test'),dpi=500,bbox_inches="tight") 
     plt.close()
 
