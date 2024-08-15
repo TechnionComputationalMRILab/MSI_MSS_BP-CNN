@@ -49,3 +49,4 @@ discerning cancer subtype from histopathological imaging data.
 1. Download the TCGA CRC [data](https://doi.org/10.5281/zenodo.3832231)
 2. Clone this repository
 3. Train and test a new model using run_model.py
+4. To load this paper's results - load the relevant roc_out files using Pickle. The file contains the patient's MSI probabilities and their labels. It is organized as a dictionary with the keys 'labels' and 'probs'. 
