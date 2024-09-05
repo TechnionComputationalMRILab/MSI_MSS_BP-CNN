@@ -41,12 +41,12 @@ genomic variations has the potential to improve the accuracy of deep-learning mo
 discerning cancer subtype from histopathological imaging data.
 
 ## Requirements
-1. Python 3.6 and higher
+1. Python $\geq$ 3.6
 2. GPU
-3. pyTorch 1.9 and higher
+3. pyTorch $\geq$ 1.9
    
 ## User Guide
 1. Download the TCGA CRC [data](https://doi.org/10.5281/zenodo.3832231)
 2. Clone this repository
 3. Train and test a new model using run_model.py
-4. To load this paper's results - load the relevant roc_out files using Pickle. The file contains the patient's MSI probabilities and their labels. It is organized as a dictionary with the keys 'labels' and 'probs'. 
+4. To load this paper's results - load the relevant roc_out files using Pickle. The file contains the patients' MSI probabilities and their labels. It is organized as a dictionary with the keys 'labels' and 'probs'. 
